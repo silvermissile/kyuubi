@@ -1,0 +1,63 @@
+[project]
+name = "kyuubi-mcp-server"
+version = "0.1.0"
+description = "MCP Server for Apache Kyuubi using JayDeBeApi"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=0.2.0",
+    "PyYAML>=6.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+# PyHive 客户端（轻量，无需 Java）
+# 注意：不包含 SASL，如需 Kerberos 认证请额外安装
+pyhive = [
+    "PyHive[hive]>=0.7.0",
+    "thrift>=0.13.0",
+]
+
+# PyHive + Kerberos 支持（需要系统安装 libsasl2-dev）
+pyhive-kerberos = [
+    "PyHive[hive]>=0.7.0",
+    "thrift>=0.13.0",
+    "pure-sasl>=0.6.2",
+    "thrift-sasl>=0.4.3",
+]
+
+# JayDeBeApi 客户端（功能完整，需要 Java）
+jaydebeapi = [
+    "JayDeBeApi>=1.2.3",
+]
+
+# 同时支持两种客户端（不含 Kerberos）
+all = [
+    "PyHive[hive]>=0.7.0",
+    "thrift>=0.13.0",
+    "JayDeBeApi>=1.2.3",
+]
+
+# 开发依赖
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+kyuubi-mcp-server = "kyuubi_mcp_server.server:main"
+
+[build-system]
+requires = ["uv_build>=0.9.10,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
