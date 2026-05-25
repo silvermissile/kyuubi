@@ -111,13 +111,20 @@ class SparkProcessBuilder(
   }
 
   private[kyuubi] def extractSparkCoreScalaVersion(fileNames: Iterable[String]): String = {
-    fileNames.collectFirst { case SPARK_CORE_SCALA_VERSION_REGEX(scalaVersion) => scalaVersion }
+    Option(fileNames).getOrElse(Iterable.empty)
+      .collectFirst { case SPARK_CORE_SCALA_VERSION_REGEX(scalaVersion) => scalaVersion }
       .getOrElse(throw new KyuubiException("Failed to extract Scala version from spark-core jar"))
   }
 
   override protected val engineScalaBinaryVersion: String = {
     env.get("SPARK_SCALA_VERSION").filter(StringUtils.isNotBlank).getOrElse {
-      extractSparkCoreScalaVersion(Paths.get(sparkHome, "jars").toFile.list())
+      val jarsDir = Paths.get(sparkHome, "jars").toFile
+      val fileNames = Option(jarsDir.list()).getOrElse {
+        throw new KyuubiException(
+          s"Failed to list jars under $sparkHome, please check if SPARK_HOME is configured " +
+            "correctly and the jars directory exists")
+      }
+      extractSparkCoreScalaVersion(fileNames)
     }
   }
 
@@ -209,7 +216,7 @@ class SparkProcessBuilder(
   }
 
   private def zkAuthKeytabFileConf(sparkConf: Map[String, String]): Map[String, String] = {
-    val zkAuthKeytab = conf.get(HighAvailabilityConf.HA_ZK_AUTH_KEYTAB)
+    val zkAuthKeytab = conf.get(HighAvailabilityConf.HA_ZK_ENGINE_AUTH_KEYTAB)
     if (zkAuthKeytab.isDefined) {
       sparkConf.get(SPARK_FILES) match {
         case Some(files) =>

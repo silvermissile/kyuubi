@@ -1,7 +1,7 @@
 {
   "name": "kyuubi-ui",
   "private": true,
-  "version": "1.11.0-SNAPSHOT",
+  "version": "1.12.0-SNAPSHOT",
   "type": "module",
   "scripts": {
     "dev": "vue-tsc --noEmit && vite --port 9090",
@@ -14,9 +14,11 @@
     "test": "vitest --mode development",
     "coverage": "vitest run --coverage"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@element-plus/icons-vue": "^2.0.9",
-    "axios": "^1.8.2",
     "date-fns": "^2.29.3",
     "element-plus": "^2.2.12",
     "monaco-editor": "^0.44.0",

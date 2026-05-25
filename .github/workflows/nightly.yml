@@ -27,13 +27,14 @@ jobs:
     if: ${{ startsWith(github.repository, 'apache/') }}
     runs-on: ubuntu-24.04
     strategy:
+      max-parallel: 15
       matrix:
         profiles:
           - '-Pscala-2.13 -Pspark-master -pl externals/kyuubi-spark-sql-engine -am'
     env:
       SPARK_LOCAL_IP: localhost
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Tune Runner VM
         uses: ./.github/actions/tune-runner-vm
       - name: Setup JDK 17

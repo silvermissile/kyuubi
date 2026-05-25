@@ -49,7 +49,6 @@ jobs:
       max-parallel: 6
       matrix:
         java:
-          - 8
           - 17
         python:
           - '3.9'
@@ -82,7 +81,7 @@ jobs:
           - java: 8
             python: '3.9'
             spark: '3.5'
-            spark-archive: '-Dspark.archive.mirror=https://www.apache.org/dyn/closer.lua/spark/spark-3.4.3 -Dspark.archive.name=spark-3.4.3-bin-hadoop3.tgz -Pzookeeper-3.6'
+            spark-archive: '-Dspark.archive.mirror=https://www.apache.org/dyn/closer.lua/spark/spark-3.4.4 -Dspark.archive.name=spark-3.4.4-bin-hadoop3.tgz -Pzookeeper-3.6'
             exclude-tags: '-Dmaven.plugin.scalatest.exclude.tags=org.scalatest.tags.Slow,org.apache.kyuubi.tags.DeltaTest,org.apache.kyuubi.tags.IcebergTest,org.apache.kyuubi.tags.PaimonTest,org.apache.kyuubi.tags.SparkLocalClusterTest'
             comment: 'verify-on-spark-3.4-binary'
           - java: 17
@@ -94,13 +93,13 @@ jobs:
           - java: 17
             python: '3.11'
             spark: '3.5'
-            spark-archive: '-Pscala-2.13 -Dspark.archive.mirror=https://www.apache.org/dyn/closer.lua/spark/spark-4.1.0 -Dspark.archive.name=spark-4.1.0-bin-hadoop3.tgz'
+            spark-archive: '-Pscala-2.13 -Dspark.archive.mirror=https://www.apache.org/dyn/closer.lua/spark/spark-4.1.1 -Dspark.archive.name=spark-4.1.1-bin-hadoop3.tgz'
             exclude-tags: '-Dmaven.plugin.scalatest.exclude.tags=org.scalatest.tags.Slow,org.apache.kyuubi.tags.DeltaTest,org.apache.kyuubi.tags.IcebergTest,org.apache.kyuubi.tags.PaimonTest,org.apache.kyuubi.tags.HudiTest,org.apache.kyuubi.tags.SparkLocalClusterTest'
             comment: 'verify-on-spark-4.1-binary'
     env:
       SPARK_LOCAL_IP: localhost
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       - name: Tune Runner VM
@@ -116,7 +115,7 @@ jobs:
       - name: Setup Maven
         uses: ./.github/actions/setup-maven
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - name: Build and test Kyuubi and Spark with maven w/o linters
@@ -150,6 +149,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
+      max-parallel: 15
       matrix:
         scala:
           - '2.13'
@@ -158,7 +158,7 @@ jobs:
         spark:
           - '3.5'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       - name: Tune Runner VM
@@ -221,7 +221,7 @@ jobs:
         extensions/spark/kyuubi-spark-connector-tpcds,\
         extensions/spark/kyuubi-spark-connector-tpch"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       - name: Tune Runner VM
@@ -277,10 +277,10 @@ jobs:
             comment: 'verify-on-flink-1.18-binary'
           - java: 8
             flink: '1.20'
-            flink-archive: '-Dflink.archive.mirror=https://www.apache.org/dyn/closer.lua/flink/flink-1.19.1 -Dflink.archive.name=flink-1.19.1-bin-scala_2.12.tgz'
+            flink-archive: '-Dflink.archive.mirror=https://www.apache.org/dyn/closer.lua/flink/flink-1.19.3 -Dflink.archive.name=flink-1.19.3-bin-scala_2.12.tgz'
             comment: 'verify-on-flink-1.19-binary'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       - name: Tune Runner VM
@@ -338,7 +338,7 @@ jobs:
             hive-archive: '-Dhive.archive.mirror=https://github.com/pan3793/cdh-hive/releases/download/cdh6.3.2-release -Dhive.archive.name=apache-hive-2.1.1-cdh6.3.2-bin.tar.gz -Dhive.archive.query='
             comment: 'verify-on-hive-2.1-cdh6-binary'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       - name: Tune Runner VM
@@ -385,11 +385,12 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
+      max-parallel: 15
       matrix:
         java: [ 8 ]
         comment: [ "normal" ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       - name: Tune Runner VM
@@ -429,24 +430,24 @@ jobs:
     name: Kyuubi Server On Kubernetes Integration Test
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       # https://github.com/docker/build-push-action
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
         with:
           cache-binary: false
       - name: Pull Spark image
         run: |
-          docker pull apache/spark:3.5.5
+          docker pull apache/spark:3.5.7
       - name: Build Kyuubi Docker Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           # passthrough CI into build container
           build-args: |
             CI=${CI}
-            BASE_IMAGE=apache/spark:3.5.5
+            BASE_IMAGE=apache/spark:3.5.7
             MVN_ARG=--spark-provided --flink-provided --hive-provided
           context: .
           file: build/Dockerfile.CI
@@ -463,7 +464,7 @@ jobs:
           # https://minikube.sigs.k8s.io/docs/handbook/pushing/#7-loading-directly-to-in-cluster-container-runtime
           minikube image load apache/kyuubi:ci
           # pre-install spark into minikube
-          minikube image load apache/spark:3.5.5
+          minikube image load apache/spark:3.5.7
       - name: kubectl pre-check
         run: |
           kubectl get nodes
@@ -507,7 +508,7 @@ jobs:
     name: Spark Engine On Kubernetes Integration Test
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free up disk space
         run: ./.github/scripts/free_disk_space.sh
       - name: Cache Engine Archives
@@ -563,7 +564,7 @@ jobs:
         zookeeper: ["3.4", "3.5", "3.6", "3.7" ]
         comment: [ "normal" ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Tune Runner VM
         uses: ./.github/actions/tune-runner-vm
       - name: Setup JDK ${{ matrix.java }}

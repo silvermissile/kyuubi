@@ -246,7 +246,7 @@ object KyuubiConf {
 
   /** the default file that contains kyuubi properties */
   final val KYUUBI_CONF_FILE_NAME = "kyuubi-defaults.conf"
-  final val KYUUBI_HOME = "KYUUBI_HOME"
+  final val KYUUBI_HOME_ENV_VAR_NAME = "KYUUBI_HOME"
   final val KYUUBI_ENGINE_ENV_PREFIX = "kyuubi.engineEnv"
   final val KYUUBI_ENGINE_YARN_MODE_ENV_PREFIX = "kyuubi.engine.yarn.AMEnv"
   final val KYUUBI_BATCH_CONF_PREFIX = "kyuubi.batchConf"
@@ -1873,6 +1873,16 @@ object KyuubiConf {
       .toSet()
       .createWithDefault(Set.empty)
 
+  val SERVER_SPARK_FILE_CONFIG_LIST: ConfigEntry[Set[String]] =
+    buildConf("kyuubi.server.spark.file.config.list")
+      .doc(s"A comma-separated list of additional Spark parameters for which Kyuubi checks " +
+        s"whether the upload path is included in ${SESSION_LOCAL_DIR_ALLOW_LIST.key}.")
+      .version("1.12.0")
+      .serverOnly
+      .stringConf
+      .toSet()
+      .createWithDefault(Set.empty)
+
   val BATCH_APPLICATION_CHECK_INTERVAL: ConfigEntry[Long] =
     buildConf("kyuubi.batch.application.check.interval")
       .doc("The interval to check batch job application information.")
@@ -2458,7 +2468,6 @@ object KyuubiConf {
       " queries to the database system through the certain JDBC driver," +
       " for now, it supports Doris, MySQL, Phoenix, PostgreSQL, StarRocks, Impala" +
       " and ClickHouse.</li>" +
-      " <li>CHAT: specify this engine type will launch a Chat engine.</li>" +
       "</ul>")
     .version("1.4.0")
     .stringConf
@@ -2640,6 +2649,17 @@ object KyuubiConf {
       .stringConf
       .createWithDefault("file:///tmp/kyuubi/events")
 
+  val EVENT_JSON_LOG_MANAGE_PERMISSIONS_ENABLED: ConfigEntry[Boolean] =
+    buildConf("kyuubi.event.json.log.managePermissions.enabled")
+      .doc("Whether the built-in JSON event logger manages the permissions of event log " +
+        "directories and files. When enabled, Kyuubi sets event log directories to 770 and " +
+        "event log files to 660. When disabled, Kyuubi only creates and writes event log " +
+        "paths, leaving permissions to the underlying file system defaults, inherited ACLs, " +
+        "or external authorization systems.")
+      .version("1.12.0")
+      .booleanConf
+      .createWithDefault(true)
+
   val SERVER_EVENT_KAFKA_TOPIC: OptionalConfigEntry[String] =
     buildConf("kyuubi.backend.server.event.kafka.topic")
       .doc("The topic of server events go for the built-in Kafka logger")
@@ -2747,6 +2767,7 @@ object KyuubiConf {
       .stringConf
       .createWithDefault("engine_operation_logs")
 
+  @deprecated("using kyuubi.internal.security.enabled instead", "1.12.0")
   val ENGINE_SECURITY_ENABLED: ConfigEntry[Boolean] =
     buildConf("kyuubi.engine.security.enabled")
       .internal
@@ -2757,6 +2778,7 @@ object KyuubiConf {
       .booleanConf
       .createWithDefault(false)
 
+  @deprecated("using kyuubi.internal.security.token.max.lifetime instead", "1.12.0")
   val ENGINE_SECURITY_TOKEN_MAX_LIFETIME: ConfigEntry[Long] =
     buildConf("kyuubi.engine.security.token.max.lifetime")
       .internal
@@ -2765,6 +2787,7 @@ object KyuubiConf {
       .timeConf
       .createWithDefault(Duration.ofMinutes(10).toMillis)
 
+  @deprecated("using kyuubi.internal.security.secret.provider instead", "1.12.0")
   val ENGINE_SECURITY_SECRET_PROVIDER: ConfigEntry[String] =
     buildConf("kyuubi.engine.security.secret.provider")
       .internal
@@ -2781,6 +2804,7 @@ object KyuubiConf {
       }
       .createWithDefault("zookeeper")
 
+  @deprecated("using kyuubi.internal.security.secret.provider.simple.secret instead", "1.12.0")
   val SIMPLE_SECURITY_SECRET_PROVIDER_PROVIDER_SECRET: OptionalConfigEntry[String] =
     buildConf("kyuubi.engine.security.secret.provider.simple.secret")
       .internal
@@ -2790,6 +2814,7 @@ object KyuubiConf {
       .stringConf
       .createOptional
 
+  @deprecated("using kyuubi.internal.security.crypto.keyLength instead", "1.12.0")
   val ENGINE_SECURITY_CRYPTO_KEY_LENGTH: ConfigEntry[Int] =
     buildConf("kyuubi.engine.security.crypto.keyLength")
       .internal
@@ -2800,6 +2825,7 @@ object KyuubiConf {
       .checkValues(Set(128, 192, 256))
       .createWithDefault(128)
 
+  @deprecated("using kyuubi.internal.security.crypto.ivLength instead", "1.12.0")
   val ENGINE_SECURITY_CRYPTO_IV_LENGTH: ConfigEntry[Int] =
     buildConf("kyuubi.engine.security.crypto.ivLength")
       .internal
@@ -2808,6 +2834,7 @@ object KyuubiConf {
       .intConf
       .createWithDefault(16)
 
+  @deprecated("using kyuubi.internal.security.crypto.keyAlgorithm instead", "1.12.0")
   val ENGINE_SECURITY_CRYPTO_KEY_ALGORITHM: ConfigEntry[String] =
     buildConf("kyuubi.engine.security.crypto.keyAlgorithm")
       .internal
@@ -2816,6 +2843,7 @@ object KyuubiConf {
       .stringConf
       .createWithDefault("AES")
 
+  @deprecated("using kyuubi.internal.security.crypto.cipher instead", "1.12.0")
   val ENGINE_SECURITY_CRYPTO_CIPHER_TRANSFORMATION: ConfigEntry[String] =
     buildConf("kyuubi.engine.security.crypto.cipher")
       .internal
@@ -2823,6 +2851,71 @@ object KyuubiConf {
       .version("1.5.0")
       .stringConf
       .createWithDefault("AES/CBC/PKCS5PADDING")
+
+  val INTERNAL_SECURITY_ENABLED: ConfigEntry[Boolean] =
+    buildConf("kyuubi.internal.security.enabled")
+      .doc("Whether to enable secure access across all the internal communications, both<ul>" +
+        "<li>between kyuubi server and kyuubi engine</li>" +
+        "<li>between kyuubi server instances</li></ul>" +
+        s"You need to also provide configure kyuubi.internal.security.secret.provider to manage " +
+        s"the encryption secret.")
+      .version("1.12.0")
+      .fallbackConf(ENGINE_SECURITY_ENABLED)
+
+  val INTERNAL_SECURITY_TOKEN_MAX_LIFETIME: ConfigEntry[Long] =
+    buildConf("kyuubi.internal.security.token.max.lifetime")
+      .doc("The max lifetime of the token used for internal secure access. Only take affects" +
+        s" when ${INTERNAL_SECURITY_ENABLED.key} is set to true.")
+      .version("1.12.0")
+      .fallbackConf(ENGINE_SECURITY_TOKEN_MAX_LIFETIME)
+
+  val INTERNAL_SECURITY_SECRET_PROVIDER: ConfigEntry[String] =
+    buildConf("kyuubi.internal.security.secret.provider")
+      .doc("The class used to manage the internal security secret. This class must be a " +
+        "subclass of `EngineSecuritySecretProvider`. Kyuubi provides the following " +
+        "built-in implementations: <ul><li>simple: Use the pre-shared secret set by " +
+        s"kyuubi.internal.security.secret.provider.simple.secret.</li> " +
+        "<li>zookeeper: Use the secret stored in ZooKeeper. " +
+        "kyuubi.ha.zookeeper.engine.secure.secret.node must be configured.</li></ul> " +
+        s"Only take affects when ${INTERNAL_SECURITY_ENABLED.key} is set to true.")
+      .version("1.12.0")
+      .fallbackConf(ENGINE_SECURITY_SECRET_PROVIDER)
+
+  val INTERNAL_SECURITY_SECRET_PROVIDER_SIMPLE_SECRET: ConfigEntry[Option[String]] =
+    buildConf("kyuubi.internal.security.secret.provider.simple.secret")
+      .doc("The secret key used for internal security access. Only take affects when" +
+        s" ${INTERNAL_SECURITY_ENABLED.key} is set to true and" +
+        s" ${INTERNAL_SECURITY_SECRET_PROVIDER.key} is 'simple'")
+      .version("1.12.0")
+      .fallbackConf(SIMPLE_SECURITY_SECRET_PROVIDER_PROVIDER_SECRET)
+
+  val INTERNAL_SECURITY_CRYPTO_KEY_LENGTH: ConfigEntry[Int] =
+    buildConf("kyuubi.internal.security.crypto.keyLength")
+      .doc("The length in bits of the encryption key to generate. Only take affects when" +
+        s" ${INTERNAL_SECURITY_ENABLED.key} is set to true. Valid values are 128, 192 and 256")
+      .version("1.12.0")
+      .fallbackConf(ENGINE_SECURITY_CRYPTO_KEY_LENGTH)
+
+  val INTERNAL_SECURITY_CRYPTO_IV_LENGTH: ConfigEntry[Int] =
+    buildConf("kyuubi.internal.security.crypto.ivLength")
+      .doc("Initial vector length, in bytes. Only take affects when" +
+        s" ${INTERNAL_SECURITY_ENABLED.key} is set to true.")
+      .version("1.12.0")
+      .fallbackConf(ENGINE_SECURITY_CRYPTO_IV_LENGTH)
+
+  val INTERNAL_SECURITY_CRYPTO_KEY_ALGORITHM: ConfigEntry[String] =
+    buildConf("kyuubi.internal.security.crypto.keyAlgorithm")
+      .doc("The algorithm for generated secret keys. Only take affects when" +
+        s" ${INTERNAL_SECURITY_ENABLED.key} is set to true.")
+      .version("1.12.0")
+      .fallbackConf(ENGINE_SECURITY_CRYPTO_KEY_ALGORITHM)
+
+  val INTERNAL_SECURITY_CRYPTO_CIPHER_TRANSFORMATION: ConfigEntry[String] =
+    buildConf("kyuubi.internal.security.crypto.cipher")
+      .doc("The cipher transformation to use for encrypting internal access token." +
+        s" Only take affects when ${INTERNAL_SECURITY_ENABLED.key} is set to true.")
+      .version("1.12.0")
+      .fallbackConf(ENGINE_SECURITY_CRYPTO_CIPHER_TRANSFORMATION)
 
   val SESSION_NAME: OptionalConfigEntry[String] =
     buildConf("kyuubi.session.name")
@@ -3336,6 +3429,32 @@ object KyuubiConf {
       .regexConf
       .createOptional
 
+  val SERVER_CONF_RETRIEVE_MODE: ConfigEntry[String] =
+    buildConf("kyuubi.server.conf.retrieveMode")
+      .serverOnly
+      .doc("Controls how session configurations are returned in REST API responses. " +
+        "Supported values: " +
+        "<ul>" +
+        "<li>REDACTED: Mask values that match kyuubi.server.redaction.regex (default).</li>" +
+        "<li>ORIGINAL: Return the raw config values as-is.</li>" +
+        "<li>NONE: Omit the conf map from responses entirely.</li>" +
+        "</ul>")
+      .version("1.12.0")
+      .stringConf
+      .checkValues(Set("REDACTED", "ORIGINAL", "NONE"))
+      .createWithDefault("REDACTED")
+
+  val FRONTEND_REST_SESSION_LIST_LEGACY_MODE: ConfigEntry[Boolean] =
+    buildConf("kyuubi.frontend.rest.legacy.v1.sessionsReturnAllUsers")
+      .serverOnly
+      .doc("When true, GET /api/v1/sessions returns all sessions on the server regardless " +
+        "of the calling user (legacy behavior). When false (default), only sessions owned " +
+        "by the authenticated user are returned. " +
+        "This flag is provided for backward compatibility and will be removed in a future release.")
+      .version("1.12.0")
+      .booleanConf
+      .createWithDefault(false)
+
   val SERVER_PERIODIC_GC_INTERVAL: ConfigEntry[Long] =
     buildConf("kyuubi.server.periodicGC.interval")
       .doc("How often to trigger the periodic garbage collection. 0 will disable it.")
@@ -3631,128 +3750,146 @@ object KyuubiConf {
     Map(configs.map { cfg => cfg.key -> cfg }: _*)
   }
 
-  val ENGINE_CHAT_MEMORY: ConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.memory")
-      .doc("The heap memory for the Chat engine")
-      .version("1.8.0")
+  val ENGINE_DATA_AGENT_MEMORY: ConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.memory")
+      .doc("The heap memory for the Data Agent engine")
+      .version("1.12.0")
       .stringConf
       .createWithDefault("1g")
 
-  val ENGINE_CHAT_JAVA_OPTIONS: OptionalConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.java.options")
-      .doc("The extra Java options for the Chat engine")
-      .version("1.8.0")
+  val ENGINE_DATA_AGENT_JAVA_OPTIONS: OptionalConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.java.options")
+      .doc("The extra Java options for the Data Agent engine")
+      .version("1.12.0")
       .stringConf
       .createOptional
 
-  val ENGINE_CHAT_PROVIDER: ConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.provider")
-      .doc("The provider for the Chat engine. Candidates: <ul>" +
-        " <li>ECHO: simply replies a welcome message.</li>" +
-        " <li>GPT: a.k.a ChatGPT, powered by OpenAI.</li>" +
-        " <li>ERNIE: ErnieBot, powered by Baidu.</li>" +
+  val ENGINE_DATA_AGENT_EXTRA_CLASSPATH: OptionalConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.extra.classpath")
+      .doc("The extra classpath for the Data Agent engine, for configuring the location " +
+        "of the LLM SDK and etc.")
+      .version("1.12.0")
+      .stringConf
+      .createOptional
+
+  val ENGINE_DATA_AGENT_PROVIDER: ConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.provider")
+      .doc("The provider for the Data Agent engine. Candidates: <ul>" +
+        " <li>ECHO: simply echoes the input, for testing purpose.</li>" +
+        " <li>OPENAI_COMPATIBLE: OpenAI-compatible LLM provider.</li>" +
         "</ul>")
-      .version("1.8.0")
+      .version("1.12.0")
       .stringConf
       .transform {
-        case "ECHO" | "echo" => "org.apache.kyuubi.engine.chat.provider.EchoProvider"
-        case "GPT" | "gpt" | "ChatGPT" => "org.apache.kyuubi.engine.chat.provider.ChatGPTProvider"
-        case "ERNIE" | "ernie" | "ErnieBot" =>
-          "org.apache.kyuubi.engine.chat.provider.ErnieBotProvider"
+        case "ECHO" | "echo" =>
+          "org.apache.kyuubi.engine.dataagent.provider.echo.EchoProvider"
+        case "OPENAI_COMPATIBLE" | "openai_compatible" | "openai-compatible" =>
+          "org.apache.kyuubi.engine.dataagent.provider.chatcompletion.ChatCompletionProvider"
         case other => other
       }
       .createWithDefault("ECHO")
 
-  val ENGINE_CHAT_GPT_API_KEY: OptionalConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.gpt.apiKey")
-      .doc("The key to access OpenAI open API, which could be got at " +
-        "https://platform.openai.com/account/api-keys")
-      .version("1.8.0")
+  val ENGINE_DATA_AGENT_MODEL: OptionalConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.model")
+      .doc("The model ID used by the Data Agent engine.")
+      .version("1.12.0")
       .stringConf
       .createOptional
 
-  val ENGINE_CHAT_GPT_MODEL: ConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.gpt.model")
-      .doc("ID of the model used in ChatGPT. Available models refer to OpenAI's " +
-        "[Model overview](https://platform.openai.com/docs/models/overview).")
-      .version("1.8.0")
-      .stringConf
-      .createWithDefault("gpt-3.5-turbo")
-
-  val ENGINE_ERNIE_BOT_ACCESS_TOKEN: OptionalConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.ernie.token")
-      .doc("The token to access ernie bot open API, which could be got at " +
-        "https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Ilkkrb0i5")
-      .version("1.9.0")
+  val ENGINE_DATA_AGENT_OPENAI_API_KEY: OptionalConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.openai.api.key")
+      .doc("The API key for the OpenAI-compatible chat-completion endpoint used by " +
+        "the Data Agent engine.")
+      .version("1.12.0")
       .stringConf
       .createOptional
 
-  val ENGINE_ERNIE_BOT_MODEL: ConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.ernie.model")
-      .doc("ID of the model used in ernie bot. " +
-        "Available models are completions_pro, ernie_bot_8k, completions and eb-instant" +
-        "[Model overview](https://cloud.baidu.com/doc/WENXINWORKSHOP/s/6lp69is2a).")
-      .version("1.9.0")
-      .stringConf
-      .createWithDefault("completions")
-
-  val ENGINE_CHAT_EXTRA_CLASSPATH: OptionalConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.extra.classpath")
-      .doc("The extra classpath for the Chat engine, for configuring the location " +
-        "of the SDK and etc.")
-      .version("1.8.0")
+  val ENGINE_DATA_AGENT_OPENAI_ENDPOINT: OptionalConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.openai.endpoint")
+      .doc("The base URL of the OpenAI-compatible chat-completion endpoint used by " +
+        "the Data Agent engine.")
+      .version("1.12.0")
       .stringConf
       .createOptional
 
-  val ENGINE_CHAT_GPT_HTTP_PROXY: OptionalConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.gpt.http.proxy")
-      .doc("HTTP proxy url for API calling in Chat GPT engine. e.g. http://127.0.0.1:1087")
-      .version("1.8.0")
-      .stringConf
-      .createOptional
+  val ENGINE_DATA_AGENT_MAX_ITERATIONS: ConfigEntry[Int] =
+    buildConf("kyuubi.engine.data.agent.max.iterations")
+      .doc("The maximum number of ReAct loop iterations for the Data Agent engine.")
+      .version("1.12.0")
+      .intConf
+      .checkValue(_ > 0, "must be positive number")
+      .createWithDefault(100)
 
-  val ENGINE_ERNIE_BOT_HTTP_PROXY: OptionalConfigEntry[String] =
-    buildConf("kyuubi.engine.chat.ernie.http.proxy")
-      .doc("HTTP proxy url for API calling in ernie bot engine. e.g. http://127.0.0.1:1088")
-      .version("1.9.0")
-      .stringConf
-      .createOptional
+  val ENGINE_DATA_AGENT_COMPACTION_TRIGGER_TOKENS: ConfigEntry[Long] =
+    buildConf("kyuubi.engine.data.agent.compaction.trigger.tokens")
+      .doc("The prompt-token threshold above which the Data Agent's compaction middleware " +
+        "summarizes older conversation history into a compact message. The check is made each " +
+        "turn as " +
+        "<code>real_prompt_tokens_of_previous_LLM_call + estimate_of_newly_appended_tail</code>; " +
+        "when this predicted prompt size reaches the configured value, older messages are " +
+        "replaced by a single summary message while the most recent exchanges are kept verbatim. " +
+        "Set to a very large value (e.g., <code>9223372036854775807</code>) to effectively " +
+        "disable compaction.")
+      .version("1.12.0")
+      .longConf
+      .checkValue(_ > 0, "must be positive number")
+      .createWithDefault(128000L)
 
-  val ENGINE_CHAT_GPT_HTTP_CONNECT_TIMEOUT: ConfigEntry[Long] =
-    buildConf("kyuubi.engine.chat.gpt.http.connect.timeout")
-      .doc("The timeout[ms] for establishing the connection with the Chat GPT server. " +
-        "A timeout value of zero is interpreted as an infinite timeout.")
-      .version("1.8.0")
+  val ENGINE_DATA_AGENT_QUERY_TIMEOUT: ConfigEntry[Long] =
+    buildConf("kyuubi.engine.data.agent.query.timeout")
+      .doc("The JDBC query execution timeout for the Data Agent SQL tools. " +
+        "Passed to <code>Statement.setQueryTimeout</code> so the server (Spark/Trino/...) " +
+        "can cooperatively cancel long-running queries and release cluster resources. " +
+        "Should be set lower than " +
+        "<code>kyuubi.engine.data.agent.tool.call.timeout</code> so server-side cancellation " +
+        "has time to react before the outer wall-clock cap fires.")
+      .version("1.12.0")
       .timeConf
-      .checkValue(_ >= 0, "must be 0 or positive number")
-      .createWithDefault(Duration.ofSeconds(120).toMillis)
+      .checkValue(_ >= 1000, "must >= 1s")
+      .createWithDefaultString("PT3M")
 
-  val ENGINE_ERNIE_HTTP_CONNECT_TIMEOUT: ConfigEntry[Long] =
-    buildConf("kyuubi.engine.chat.ernie.http.connect.timeout")
-      .doc("The timeout[ms] for establishing the connection with the ernie bot server. " +
-        "A timeout value of zero is interpreted as an infinite timeout.")
-      .version("1.9.0")
+  val ENGINE_DATA_AGENT_TOOL_CALL_TIMEOUT: ConfigEntry[Long] =
+    buildConf("kyuubi.engine.data.agent.tool.call.timeout")
+      .doc("The maximum wall-clock execution time for any tool call in the Data Agent " +
+        "engine. Acts as the outer safety net enforced by the agent runtime via " +
+        "<code>Future.cancel()</code>, applied uniformly to every tool. " +
+        "For SQL tools the inner JDBC-level timeout is controlled separately by " +
+        "<code>kyuubi.engine.data.agent.query.timeout</code>, which should be set lower " +
+        "so server-side cancellation has time to react before this hard cap fires.")
+      .version("1.12.0")
       .timeConf
-      .checkValue(_ >= 0, "must be 0 or positive number")
-      .createWithDefault(Duration.ofSeconds(120).toMillis)
+      .checkValue(_ >= 1000, "must >= 1s")
+      .createWithDefaultString("PT5M")
 
-  val ENGINE_CHAT_GPT_HTTP_SOCKET_TIMEOUT: ConfigEntry[Long] =
-    buildConf("kyuubi.engine.chat.gpt.http.socket.timeout")
-      .doc("The timeout[ms] for waiting for data packets after Chat GPT server " +
-        "connection is established. A timeout value of zero is interpreted as an infinite timeout.")
-      .version("1.8.0")
-      .timeConf
-      .checkValue(_ >= 0, "must be 0 or positive number")
-      .createWithDefault(Duration.ofSeconds(120).toMillis)
+  val ENGINE_DATA_AGENT_JDBC_URL: OptionalConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.jdbc.url")
+      .doc("The JDBC URL for the Data Agent engine to connect to the target database. " +
+        "If not set, the Data Agent will connect back to Kyuubi server " +
+        "via ZooKeeper service discovery.")
+      .version("1.12.0")
+      .stringConf
+      .createOptional
 
-  val ENGINE_ERNIE_HTTP_SOCKET_TIMEOUT: ConfigEntry[Long] =
-    buildConf("kyuubi.engine.chat.ernie.http.socket.timeout")
-      .doc("The timeout[ms] for waiting for data packets after ernie bot server " +
-        "connection is established. A timeout value of zero is interpreted as an infinite timeout.")
-      .version("1.9.0")
+  val ENGINE_DATA_AGENT_APPROVAL_MODE: ConfigEntry[String] =
+    buildConf("kyuubi.engine.data.agent.approval.mode")
+      .doc("Default approval mode for tool execution in the Data Agent engine. " +
+        "Candidates: <ul>" +
+        " <li>AUTO_APPROVE: all tools are auto-approved without user interaction.</li>" +
+        " <li>NORMAL: only destructive tools require explicit approval.</li>" +
+        " <li>STRICT: all tools require explicit user approval.</li>" +
+        "</ul>")
+      .version("1.12.0")
+      .stringConf
+      .checkValues(Set("STRICT", "NORMAL", "AUTO_APPROVE"))
+      .createWithDefault("NORMAL")
+
+  val FRONTEND_DATA_AGENT_OPERATION_TIMEOUT: ConfigEntry[Long] =
+    buildConf("kyuubi.frontend.data.agent.operation.timeout")
+      .doc("Timeout for waiting on data agent engine launch and " +
+        "operation start in the REST frontend.")
+      .version("1.12.0")
       .timeConf
-      .checkValue(_ >= 0, "must be 0 or positive number")
-      .createWithDefault(Duration.ofSeconds(120).toMillis)
+      .createWithDefaultString("PT2M")
 
   val ENGINE_JDBC_MEMORY: ConfigEntry[String] =
     buildConf("kyuubi.engine.jdbc.memory")
